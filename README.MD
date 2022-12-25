@@ -1,0 +1,1 @@
+Golang example to connect with mongoDB instance from Docker Container
