@@ -1,6 +1,41 @@
-version: '3'
+version: '3.1'
 services:
-  app:
-    build: .
+  # Creating log database service with mongo-db
+  log-db:
+    image: mongo
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${LOG_DB_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${LOG_DB_PASSWORD}
     ports: 
-      - 3000:3000
+      - ${LOG_DB_PORT}:27017
+    volumes:
+      - log-db-data:/data/db
+      - log-db-config:/data/configdb
+      - log-db-mongo:/etc/mongo
+
+  # Creating log database explorer with mongo-express
+  log-db-explorer:
+    depends_on:
+      - log-db
+    restart: unless-stopped
+    image: mongo-express
+    ports:
+      - 8081:8081
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: ${LOG_DB_USERNAME}
+      ME_CONFIG_MONGODB_ADMINPASSWORD: ${LOG_DB_PASSWORD}
+      ME_CONFIG_MONGODB_URL: mongodb://${LOG_DB_USERNAME}:${LOG_DB_PASSWORD}@${LOG_DB_HOST}:${LOG_DB_PORT}/
+
+  # Application log
+  # app:
+  #   depends_on:
+  #     - log-db
+  #   build: .
+  #   ports: 
+  #     - 3000:3000
+
+volumes:
+  log-db-data:
+  log-db-config:
+  log-db-mongo:
+
