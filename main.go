@@ -2,49 +2,77 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/joho/godotenv"
-	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+type Data struct {
+	Name string
+}
+
 func main() {
+	// Load .env data put to os environment
 	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found")
+		panic("No .env file found")
 	}
-	uri := "mongodb://" + os.Getenv("LOG_DB_USERNAME") + ":" + os.Getenv("LOG_DB_PASSWORD") + "@" + os.Getenv("LOG_DB_HOST_NATIVE") + ":" + os.Getenv("LOG_DB_PORT") + "/?retryWrites=true&w=majority"
-	if uri == "" {
-		log.Fatal("You must set your 'MONGODB_URI' environmental variable. See\n\t https://www.mongodb.com/docs/drivers/go/current/usage-examples/#environment-variable")
+
+	/**
+	* Connection variable definition
+	**/
+	// Connection string
+	var mongoConnectionString = os.Getenv("MONGO_DB_CONNECTION_STRING")
+
+	// Per variable definition
+	var mongoHost = os.Getenv("MONGO_DB_HOST_NATIVE")
+	var mongoUsername = os.Getenv("MONGO_DB_USERNAME")
+	var mongoPassword = os.Getenv("MONGO_DB_PASSWORD")
+	var mongoPort = os.Getenv("MONGO_DB_PORT")
+
+	// If mongo db connection string is empty then create the connection from variabel
+	if len(mongoConnectionString) == 0 {
+		mongoConnectionString = "mongodb://" + mongoUsername + ":" + mongoPassword + "@" + mongoHost + ":" + mongoPort + "/?retryWrites=true&w=majority"
 	}
-	
-	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(uri))
+
+	/**
+	* Create mongo db connection by connection string
+	**/
+	// Context to pass the data
+	ctx := context.TODO()
+	// Connect to the mongodb
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoConnectionString))
 	if err != nil {
 		panic(err)
 	}
+	// Defer function to disconnect to the mongo db
 	defer func() {
-		if err := client.Disconnect(context.TODO()); err != nil {
+		if err := client.Disconnect(ctx); err != nil {
 			panic(err)
 		}
 	}()
-	coll := client.Database("sample_mflix").Collection("movies")
-	title := "Back to the Future"
-	var result bson.M
-	err = coll.FindOne(context.TODO(), bson.D{{"title", title}}).Decode(&result)
-	if err == mongo.ErrNoDocuments {
-		fmt.Printf("No document was found with the title %s\n", title)
-		return
-	}
+
+	/**
+	* Define query for mongo db. Define the db and collection
+	**/
+	var dbName = os.Getenv("MONGO_DB_NAME")
+	var dbCollectionName = os.Getenv("MONGO_DB_COLLECTION_NAME")
+
+	// Make connection to database and collection
+	coll := client.Database(dbName).Collection(dbCollectionName)
+
+	// CREATE OPERATION
+	newData := Data{Name: "Test New Data"}
+	result, err := coll.InsertOne(ctx, newData)
 	if err != nil {
 		panic(err)
 	}
-	jsonData, err := json.MarshalIndent(result, "", "    ")
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("%s\n", jsonData)
+	fmt.Println("Inserted Data", result)
+
+	// READ OPERATION
+	// UPDATE OPERATION
+	// DELETE OPERATION
+
 }
